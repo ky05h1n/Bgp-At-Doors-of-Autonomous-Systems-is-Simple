@@ -1,5 +1,9 @@
 FROM frrouting/frr
 
+RUN apk update && \
+    apk add iproute2 bridge-utils busybox && \
+    rm -rf /var/cache/apk/*
+
 RUN sed -i 's/^bgpd=no/bgpd=yes/' /etc/frr/daemons && \
     sed -i 's/^ospfd=no/ospfd=yes/' /etc/frr/daemons && \
     sed -i 's/^isisd=no/isisd=yes/' /etc/frr/daemons

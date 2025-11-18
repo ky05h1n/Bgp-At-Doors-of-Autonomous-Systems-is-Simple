@@ -1,0 +1,21 @@
+# Configuration for enja-host-1
+# This is a simple host connected to enja-router-2
+
+# ====================================
+# INTERFACE CONFIGURATION
+# ====================================
+# Configure IP address on eth1 (connected to enja-router-2)
+# Hosts should be in the same subnet to communicate via VXLAN
+ip addr add 192.168.1.1/24 dev eth1
+
+# Bring up interface
+ip link set dev eth1 up
+
+# ====================================
+# NOTES
+# ====================================
+# - This host doesn't need routing configuration
+# - All hosts (enja-host-1, 2, 3) should be in the same subnet (e.g., 192.168.1.0/24)
+# - VXLAN provides Layer 2 connectivity between all hosts
+# - No default gateway needed for testing connectivity between hosts
+# - The router will learn the MAC address automatically via BGP EVPN

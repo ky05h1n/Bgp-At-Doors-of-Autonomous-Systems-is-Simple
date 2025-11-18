@@ -1,0 +1,83 @@
+# Configuration for enja-router-4 (VTEP / Leaf)
+# This router acts as a VTEP connecting to enja-host-3
+
+# ====================================
+# INTERFACE CONFIGURATION
+# ====================================
+# Configure loopback interface for BGP router-id and VTEP source
+ip addr add 1.1.1.4/32 dev lo
+
+# Configure interface to spine (enja-router-1)
+ip addr add 10.1.1.10/30 dev eth2
+
+# Bring up interfaces
+ip link set dev lo up
+ip link set dev eth0 up
+ip link set dev eth2 up
+
+# ====================================
+# BRIDGE CONFIGURATION
+# ====================================
+# Create bridge interface
+ip link add br0 type bridge
+
+# Add host-facing interface to bridge
+ip link set dev eth0 master br0
+
+# Bring up bridge
+ip link set dev br0 up
+
+# ====================================
+# VXLAN CONFIGURATION
+# ====================================
+# Create VXLAN interface with VNI 10
+ip link add vxlan10 type vxlan id 10 dstport 4789 local 1.1.1.4 nolearning
+
+# Add VXLAN interface to bridge
+ip link set dev vxlan10 master br0
+
+# Bring up VXLAN interface
+ip link set dev vxlan10 up
+
+# ====================================
+# FRR CONFIGURATION (frr.conf or vtysh commands)
+# ====================================
+
+# Configure hostname
+hostname enja-router-4
+
+# ====================================
+# OSPF CONFIGURATION (Underlay)
+# ====================================
+router ospf
+ network 1.1.1.4/32 area 0
+ network 10.1.1.8/30 area 0
+exit
+
+# ====================================
+# BGP CONFIGURATION (Overlay - EVPN)
+# ====================================
+router bgp 1
+ bgp router-id 1.1.1.4
+ no bgp default ipv4-unicast
+ 
+ # BGP neighbor (Route Reflector)
+ neighbor 1.1.1.1 remote-as 1
+ neighbor 1.1.1.1 update-source lo
+ 
+ # Enable EVPN address family
+ address-family l2vpn evpn
+  neighbor 1.1.1.1 activate
+  advertise-all-vni
+ exit-address-family
+exit
+
+# ====================================
+# NOTES
+# ====================================
+# - This is a VTEP (VXLAN Tunnel Endpoint)
+# - eth0 connects to enja-host-3
+# - VXLAN VNI 10 is used for Layer 2 extension
+# - 'nolearning' disables data-plane MAC learning (EVPN handles it)
+# - 'advertise-all-vni' advertises VNI 10 to BGP EVPN
+# - BGP learns MAC addresses and creates Type 2 routes

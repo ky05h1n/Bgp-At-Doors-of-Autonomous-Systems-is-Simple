@@ -1,0 +1,72 @@
+# Configuration for enja-router-1 (Route Reflector / Spine)
+# This router acts as the BGP Route Reflector for the EVPN network
+
+# ====================================
+# INTERFACE CONFIGURATION
+# ====================================
+# Configure loopback interface for BGP router-id
+ip addr add 1.1.1.1/32 dev lo
+
+# Configure interfaces to VTEPs
+ip addr add 10.1.1.1/30 dev eth0  # To enja-router-2
+ip addr add 10.1.1.5/30 dev eth1  # To enja-router-3
+ip addr add 10.1.1.9/30 dev eth2  # To enja-router-4
+
+# Bring up all interfaces
+ip link set dev lo up
+ip link set dev eth0 up
+ip link set dev eth1 up
+ip link set dev eth2 up
+
+# ====================================
+# FRR CONFIGURATION (frr.conf or vtysh commands)
+# ====================================
+
+# Configure hostname
+hostname enja-router-1
+
+# ====================================
+# OSPF CONFIGURATION (Underlay)
+# ====================================
+# OSPF provides reachability between loopback addresses
+router ospf
+ network 1.1.1.1/32 area 0
+ network 10.1.1.0/30 area 0
+ network 10.1.1.4/30 area 0
+ network 10.1.1.8/30 area 0
+exit
+
+# ====================================
+# BGP CONFIGURATION (Overlay - EVPN)
+# ====================================
+router bgp 1
+ bgp router-id 1.1.1.1
+ no bgp default ipv4-unicast
+ 
+ # BGP neighbors (VTEPs) - using loopback addresses
+ neighbor 1.1.1.2 remote-as 1
+ neighbor 1.1.1.2 update-source lo
+ neighbor 1.1.1.3 remote-as 1
+ neighbor 1.1.1.3 update-source lo
+ neighbor 1.1.1.4 remote-as 1
+ neighbor 1.1.1.4 update-source lo
+ 
+ # Enable EVPN address family
+ address-family l2vpn evpn
+  neighbor 1.1.1.2 activate
+  neighbor 1.1.1.2 route-reflector-client
+  neighbor 1.1.1.3 activate
+  neighbor 1.1.1.3 route-reflector-client
+  neighbor 1.1.1.4 activate
+  neighbor 1.1.1.4 route-reflector-client
+ exit-address-family
+exit
+
+# ====================================
+# NOTES
+# ====================================
+# - This router is the Route Reflector (RR)
+# - It doesn't need VXLAN configuration as it only reflects routes
+# - OSPF ensures all loopback IPs are reachable
+# - BGP EVPN is used for MAC address learning
+# - Route reflector clients are the three VTEPs
